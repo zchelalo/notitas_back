@@ -1,7 +1,7 @@
 __pycache__
 .env
 DB
-src/public/images/pfp
+src/public/images/pfp/*
 !src/public/images/pfp/.gitkeep
-src/public/images/banner
+src/public/images/banner/*
 !src/public/images/banner/.gitkeep
