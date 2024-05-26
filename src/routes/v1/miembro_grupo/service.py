@@ -1,9 +1,18 @@
 from sqlalchemy import text
+import jwt
+import time
+import os
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
+import requests
 
 from models import (
-  MiembroGrupoModel
+  UsuarioModel,
+  GrupoModel,
+  MiembroGrupoModel,
+  RolGrupoModel
 )
-from routes.v1.miembro_grupo.schema import MiembroGrupo as MiembroGrupoSchema
+from routes.v1.miembro_grupo.schema import MiembroGrupo as MiembroGrupoSchema, InvitationData as InvitationDataSchema, TokenAceptarInv as TokenAceptarInvSchema
 
 class MiembroGrupoService():
   def __init__(self, db) -> None:
@@ -75,6 +84,108 @@ class MiembroGrupoService():
 
       result = session.query(MiembroGrupoModel).filter(*filtros).one_or_none()
       return result
+
+  def invitar_miembro_grupo(self, inv_data: InvitationDataSchema):
+    with self.db as session:
+      grupo = session.query(GrupoModel).filter(GrupoModel.id == inv_data.grupo_id, GrupoModel.disabled == False).one_or_none()
+      if not grupo:
+        raise ValueError("No se encontró el grupo")
+
+      usuario = session.query(UsuarioModel).filter(UsuarioModel.correo == inv_data.correo, UsuarioModel.disabled == False).one_or_none()
+      if not usuario:
+        raise ValueError("No se encontró al usuario")
+      
+      rol_grupo = session.query(RolGrupoModel).filter(RolGrupoModel.id == inv_data.rol_grupo_id).one_or_none()
+      if not rol_grupo:
+        raise ValueError("No se encontró el rol del grupo")
+
+      existeUsuarioEnGrupo = session.query(MiembroGrupoModel).filter(MiembroGrupoModel.usuario_id == usuario.id, MiembroGrupoModel.grupo_id == grupo.id).one_or_none()
+      if existeUsuarioEnGrupo and not existeUsuarioEnGrupo.disabled:
+        raise ValueError("El usuario ya es miembro del grupo")
+
+      # if existeUsuarioEnGrupo and existeUsuarioEnGrupo.disabled:
+      #   return { 'a': 'a' }
+
+      # MANDAR CORREO DE INVITACIÓN
+      # Leer la clave privada PEM
+      ruta_certs = os.path.join(os.getcwd(), 'certs')
+      with open(os.path.join(ruta_certs, 'private_invitation.pem'), 'rb') as pem_file:
+        pem_data = pem_file.read()
+
+      # Cargar la clave privada
+      private_key = serialization.load_pem_private_key(
+        pem_data,
+        password=None,
+        backend=default_backend()
+      )
+
+      # Definir el tiempo actual y el tiempo de expiración (10 minutos)
+      current_time = int(time.time())
+      expiration_time = current_time + 600  # 10 minutos en segundos
+
+      # Definir los datos del JWT (claims)
+      jwt_payload = {
+        'sub': usuario.id,
+        'grupo_id': grupo.id,
+        'rol_grupo_id': rol_grupo.id,
+        'exp': expiration_time
+      }
+
+      # Crear el JWT firmado
+      jwt_token = jwt.encode(jwt_payload, private_key, algorithm='RS256')
+
+      link = f'http://localhost:5173/invitacion?token={jwt_token}'
+
+      info = {
+        'from': 'Notitas',
+        'to': usuario.correo,
+        'subject': f'Invitación para unirse a {grupo.nombre}',
+        'html': f'<b>Acepte la invitación ingresando al siguiente link</b><br /><a href="{link}">Aceptar</a>'
+      }
+
+      url = 'http://notitas_email:3000/api/v1/correo'
+
+      response = requests.post(url, json=info)
+      response.raise_for_status()
+
+      # print(jwt_token)
+
+      return response.json()
+
+  def aceptar_invitacion_miembro_grupo(self, token_data: TokenAceptarInvSchema):
+    with self.db as session:
+      # Leer la clave pública PEM
+      ruta_certs = os.path.join(os.getcwd(), 'certs')
+      with open(os.path.join(ruta_certs, 'public_invitation.pem'), 'rb') as pem_file:
+        pem_data = pem_file.read()
+
+      # Cargar la clave pública
+      public_key = serialization.load_pem_public_key(
+        pem_data,
+        backend=default_backend()
+      )
+
+      payload = jwt.decode(token_data.token, public_key, algorithms=["RS256"])
+
+      usuario = session.query(UsuarioModel).filter(UsuarioModel.id == payload['sub'], UsuarioModel.disabled == False).one_or_none()
+      if not usuario:
+        raise ValueError("No se encontró al usuario")
+
+      grupo = session.query(GrupoModel).filter(GrupoModel.id == payload['grupo_id'], GrupoModel.disabled == False).one_or_none()
+      if not grupo:
+        raise ValueError("No se encontró el grupo")
+
+      rol_grupo = session.query(RolGrupoModel).filter(RolGrupoModel.id == payload['rol_grupo_id']).one_or_none()
+      if not rol_grupo:
+        raise ValueError("No se encontró el rol del grupo")
+
+      miembro_grupo_schema = MiembroGrupoSchema(usuario_id=usuario.id, grupo_id=grupo.id, rol_grupo_id=rol_grupo.id)
+      miembro_grupo = MiembroGrupoModel(**miembro_grupo_schema.model_dump())
+      session.add(miembro_grupo)
+      session.commit()
+      session.refresh(miembro_grupo)
+
+      return miembro_grupo
 
   def create_miembro_grupo(self, miembro_grupo: MiembroGrupoSchema):
     with self.db as session:

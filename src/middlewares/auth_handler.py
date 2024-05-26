@@ -12,7 +12,7 @@ class CheckRoles(HTTPBearer):
     auth = await super().__call__(request)
     token_data = validate_token(auth.credentials)
     if "rol" not in token_data:
-      raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="El token no contiene rol")
+      raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Token invalido")
     user_roles = token_data["rol"]
     for rol in self.roles:
       if rol == user_roles:

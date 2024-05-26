@@ -60,3 +60,29 @@ class MiembroGrupoResponse(BaseModel):
         "grupo_profile_pic": "http://localhost/notitas_back/public/images/banner/default.jpg"
       }
     }
+
+class InvitationData(BaseModel):
+  grupo_id: int
+  correo: str
+  rol_grupo_id: int
+
+  class Config:
+    from_attributes = True
+    json_schema_extra = {
+      "example": {
+        "grupo_id": 1,
+        "correo": "eduardosaavedra687@gmail.com",
+        "rol_grupo_id": 1
+      }
+    }
+
+class TokenAceptarInv(BaseModel):
+  token: str
+
+  class Config:
+    from_attributes = True
+    json_schema_extra = {
+      "example": {
+        "token": "eyJ0eXA.dgsfg8gsd.3gx_bf78a"
+      }
+    }

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
 
 from config.database import Session, engine, Base
@@ -7,7 +8,9 @@ from middlewares.auth_handler import CheckRoles
 from routes.v1.miembro_grupo.schema import (
   MiembroGrupo as MiembroGrupoSchema,
   MiembroGrupoResponse as MiembroGrupoResponseSchema,
-  MiembroGrupoCreate as MiembroGrupoCreateSchema
+  MiembroGrupoCreate as MiembroGrupoCreateSchema,
+  InvitationData as InvitationDataSchema,
+  TokenAceptarInv as TokenAceptarInvSchema
 )
 from routes.v1.miembro_grupo.service import MiembroGrupoService
 
@@ -44,6 +47,33 @@ async def get_miembro_grupo(id: int) -> MiembroGrupoSchema:
   result = MiembroGrupoService(db).get_miembro_grupo(id)
   if not result:
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró al miembro del grupo'})
+  return result
+
+@router.post(
+  path='/invitar', 
+  tags=['miembros_grupo'], 
+  status_code=status.HTTP_200_OK,
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
+)
+async def invitar_miembro_grupo(inv_data: InvitationDataSchema) -> JSONResponse:
+  db = Session()
+  result = MiembroGrupoService(db).invitar_miembro_grupo(inv_data)
+  if not result:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo invitar al usuario al grupo'})
+  return {'message': 'Usuario invitado al grupo correctamente'}
+
+@router.post(
+  path='/aceptar', 
+  tags=['miembros_grupo'], 
+  status_code=status.HTTP_200_OK,
+  response_model=MiembroGrupoSchema,
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
+)
+async def aceptar_invitacion_miembro_grupo(token_data: TokenAceptarInvSchema) -> MiembroGrupoSchema:
+  db = Session()
+  result = MiembroGrupoService(db).aceptar_invitacion_miembro_grupo(token_data)
+  if not result:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo aceptar la invitación al grupo'})
   return result
 
 @router.post(

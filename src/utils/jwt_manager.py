@@ -8,13 +8,13 @@ load_dotenv()
 JWKS_ACCESS_URI = os.getenv("JWKS_ACCESS_URI")
 
 def get_jwks():
-    try:
-      response = requests.get(JWKS_ACCESS_URI)
-      response.raise_for_status()  # Lanza una excepción si la solicitud no tiene éxito
-      jwks = response.json()
-      return jwks
-    except requests.RequestException as e:
-      raise e
+  try:
+    response = requests.get(JWKS_ACCESS_URI)
+    response.raise_for_status()  # Lanza una excepción si la solicitud no tiene éxito
+    jwks = response.json()
+    return jwks
+  except requests.RequestException as e:
+    raise e
 
 def validate_token(token: str) -> dict:
   try:
