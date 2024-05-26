@@ -179,13 +179,23 @@ class MiembroGrupoService():
       if not rol_grupo:
         raise ValueError("No se encontró el rol del grupo")
 
-      miembro_grupo_schema = MiembroGrupoSchema(usuario_id=usuario.id, grupo_id=grupo.id, rol_grupo_id=rol_grupo.id)
-      miembro_grupo = MiembroGrupoModel(**miembro_grupo_schema.model_dump())
-      session.add(miembro_grupo)
-      session.commit()
-      session.refresh(miembro_grupo)
+      miembro_grupo = session.query(MiembroGrupoModel).filter(MiembroGrupoModel.usuario_id == usuario.id, MiembroGrupoModel.grupo_id == grupo.id).one_or_none()
+      if miembro_grupo and not miembro_grupo.disabled:
+        raise ValueError("El usuario ya es miembro del grupo")
 
-      return miembro_grupo
+      if miembro_grupo and miembro_grupo.disabled:
+        miembro_grupo.disabled = False
+        session.commit()
+        session.refresh(miembro_grupo)
+        return miembro_grupo
+
+      new_miembro_grupo_schema = MiembroGrupoSchema(usuario_id=usuario.id, grupo_id=grupo.id, rol_grupo_id=rol_grupo.id)
+      new_miembro_grupo = MiembroGrupoModel(**new_miembro_grupo_schema.model_dump())
+      session.add(new_miembro_grupo)
+      session.commit()
+      session.refresh(new_miembro_grupo)
+
+      return new_miembro_grupo
 
   def create_miembro_grupo(self, miembro_grupo: MiembroGrupoSchema):
     with self.db as session:
