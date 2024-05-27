@@ -85,11 +85,34 @@ class MiembroGrupoService():
       result = session.query(MiembroGrupoModel).filter(*filtros).one_or_none()
       return result
 
-  def invitar_miembro_grupo(self, inv_data: InvitationDataSchema):
+  def invitar_miembro_grupo(self, inv_data: InvitationDataSchema, usuario_id: int):
     with self.db as session:
       grupo = session.query(GrupoModel).filter(GrupoModel.id == inv_data.grupo_id, GrupoModel.disabled == False).one_or_none()
       if not grupo:
         raise ValueError("No se encontró el grupo")
+
+      sql = text("""
+        SELECT "roles_grupo"."clave"
+        FROM "grupos"
+        INNER JOIN "miembros_grupo"
+        ON "miembros_grupo"."grupo_id" = "grupos"."id"
+        INNER JOIN "roles_grupo"
+        ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+        WHERE "miembros_grupo"."usuario_id" = :usuario_id AND "grupos"."id" = :grupo_id
+      """)
+
+      query = session.execute(sql, {"usuario_id": usuario_id, "grupo_id": grupo.id})
+      rol_grupo_clave = query.fetchone()
+
+      if not rol_grupo_clave:
+        raise ValueError("No se encontró el rol del grupo para el usuario")
+
+      rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))
+
+      roles_permitidos = ["propietario", "administrador"]
+
+      if rol_grupo_clave.get("clave") not in roles_permitidos:
+        raise ValueError("El usuario no tiene permisos para invitar personas a este grupo")
 
       usuario = session.query(UsuarioModel).filter(UsuarioModel.correo == inv_data.correo, UsuarioModel.disabled == False).one_or_none()
       if not usuario:
@@ -99,11 +122,11 @@ class MiembroGrupoService():
       if not rol_grupo:
         raise ValueError("No se encontró el rol del grupo")
 
-      existeUsuarioEnGrupo = session.query(MiembroGrupoModel).filter(MiembroGrupoModel.usuario_id == usuario.id, MiembroGrupoModel.grupo_id == grupo.id).one_or_none()
-      if existeUsuarioEnGrupo and not existeUsuarioEnGrupo.disabled:
+      existe_usuario_en_grupo = session.query(MiembroGrupoModel).filter(MiembroGrupoModel.usuario_id == usuario.id, MiembroGrupoModel.grupo_id == grupo.id).one_or_none()
+      if existe_usuario_en_grupo and not existe_usuario_en_grupo.disabled:
         raise ValueError("El usuario ya es miembro del grupo")
 
-      # if existeUsuarioEnGrupo and existeUsuarioEnGrupo.disabled:
+      # if existe_usuario_en_grupo and existe_usuario_en_grupo.disabled:
       #   return { 'a': 'a' }
 
       # MANDAR CORREO DE INVITACIÓN

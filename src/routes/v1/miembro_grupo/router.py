@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
+from starlette.requests import Request
 
 from config.database import Session, engine, Base
 from middlewares.auth_handler import CheckRoles
@@ -55,9 +56,15 @@ async def get_miembro_grupo(id: int) -> MiembroGrupoSchema:
   status_code=status.HTTP_200_OK,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def invitar_miembro_grupo(inv_data: InvitationDataSchema) -> JSONResponse:
+async def invitar_miembro_grupo(
+  inv_data: InvitationDataSchema,
+  request: Request
+) -> JSONResponse:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+
   db = Session()
-  result = MiembroGrupoService(db).invitar_miembro_grupo(inv_data)
+  result = MiembroGrupoService(db).invitar_miembro_grupo(inv_data, usuario_id)
   if not result:
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo invitar al usuario al grupo'})
   return {'message': 'Usuario invitado al grupo correctamente'}

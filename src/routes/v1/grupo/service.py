@@ -77,15 +77,14 @@ class GrupoService():
       rol_grupo_clave = query.fetchone()
 
       if not rol_grupo_clave:
-        raise ValueError("No se encontró el rol del grupo para el usuario.")
-      
-      if rol_grupo_clave:
-        rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))  # Convertir a un diccionario
+        raise ValueError("No se encontró el rol del grupo para el usuario")
+
+      rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))  # Convertir a un diccionario
 
       roles_permitidos = ["propietario", "administrador"]
 
       if rol_grupo_clave.get("clave") not in roles_permitidos:
-        raise ValueError("El usuario no tiene permisos para modificar este grupo.")
+        raise ValueError("El usuario no tiene permisos para modificar este grupo")
 
       for field, value in grupo_update.model_dump(exclude_unset=True).items():
         setattr(grupo, field, value)
@@ -108,13 +107,13 @@ class GrupoService():
       rol_grupo_clave = query.fetchone()
 
       if not rol_grupo_clave:
-        raise ValueError("No se encontró el rol del grupo para el usuario.")
+        raise ValueError("No se encontró el rol del grupo para el usuario")
 
       if rol_grupo_clave:
         rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))  # Convertir a un diccionario
 
       if rol_grupo_clave.get("clave") != "propietario":
-        raise ValueError("El usuario no tiene permisos de propietario en este grupo.")
+        raise ValueError("El usuario no tiene permisos de propietario en este grupo")
 
       grupo.disabled = True
       session.add(grupo)
