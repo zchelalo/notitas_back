@@ -32,6 +32,17 @@ class MiembroGrupoCreate(BaseModel):
       }
     }
 
+class MiembroGrupoUpdate(BaseModel):
+  rol_grupo_id: conint(strict=True, gt=0)
+
+  class Config:
+    from_attributes = True
+    json_schema_extra = {
+      "example": {
+        "rol_grupo_id": 1
+      }
+    }
+
 class MiembroGrupoResponse(BaseModel):
   id: int
   rol_grupo_id: int

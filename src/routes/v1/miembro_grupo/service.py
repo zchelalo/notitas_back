@@ -18,7 +18,7 @@ class MiembroGrupoService():
   def __init__(self, db) -> None:
     self.db = db
 
-  def get_miembros_grupo(self, grupo_id, usuario_id):
+  def get_miembros_grupo(self, grupo_id: int, usuario_id: int):
     with self.db as session:
       # filtros = [
       #   MiembroGrupoModel.disabled == False
@@ -74,16 +74,47 @@ class MiembroGrupoService():
       #   rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))  # Convertir a un diccionario
       return miembros_grupo
 
-  def get_miembro_grupo(self, id):
+  def get_miembro_grupo(self, id: int):
     with self.db as session:
-      filtros = [
-        MiembroGrupoModel.disabled == False
-      ]
+      # filtros = [
+      #   MiembroGrupoModel.disabled == False
+      # ]
 
-      filtros.append(MiembroGrupoModel.id == id)
+      # filtros.append(MiembroGrupoModel.id == id)
 
-      result = session.query(MiembroGrupoModel).filter(*filtros).one_or_none()
-      return result
+      # result = session.query(MiembroGrupoModel).filter(*filtros).one_or_none()
+
+      sql = text("""
+        SELECT
+          "miembros_grupo"."id",
+          "miembros_grupo"."usuario_id",
+          "miembros_grupo"."grupo_id",
+          "miembros_grupo"."rol_grupo_id",
+          "roles_grupo"."clave" AS "rol_grupo_clave",
+          "roles_grupo"."descripcion" AS "rol_grupo_descripcion",
+          "usuarios"."nombre" AS "usuario_nombre",
+          "usuarios"."profile_pic" AS "usuario_profile_pic",
+          "grupos"."nombre" AS "grupo_nombre",
+          "grupos"."profile_pic" AS "grupo_profile_pic"
+        FROM "miembros_grupo"
+        INNER JOIN "roles_grupo"
+        ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+        INNER JOIN "grupos"
+        ON "miembros_grupo"."grupo_id" = "grupos"."id"
+        INNER JOIN "usuarios"
+        ON "miembros_grupo"."usuario_id" = "usuarios"."id"
+        WHERE "miembros_grupo"."disabled" = FALSE AND "miembros_grupo"."id" = :miembro_grupo_id
+      """)
+
+      query = session.execute(sql, {"miembro_grupo_id": id})
+      miembro_grupo = query.fetchone()
+
+      if not miembro_grupo:
+        raise ValueError("No se encontró el miembro del grupo")
+
+      miembro_grupo = dict(zip(query.keys(), miembro_grupo))
+
+      return miembro_grupo
 
   def invitar_miembro_grupo(self, inv_data: InvitationDataSchema, usuario_id: int):
     with self.db as session:
@@ -220,10 +251,156 @@ class MiembroGrupoService():
 
       return new_miembro_grupo
 
-  def create_miembro_grupo(self, miembro_grupo: MiembroGrupoSchema):
+  def update_miembro_grupo(self, id: int, miembro_grupo_update: MiembroGrupoSchema, usuario_id: int):
     with self.db as session:
-      miembro_grupo = MiembroGrupoModel(**miembro_grupo.dict())
-      session.add(miembro_grupo)
+      sql_miembro_grupo = text("""
+        SELECT
+          "miembros_grupo"."id",
+          "miembros_grupo"."grupo_id",
+          "miembros_grupo"."usuario_id",
+          "miembros_grupo"."rol_grupo_id",
+          "roles_grupo"."clave" as "rol_grupo_clave"
+        FROM "miembros_grupo"
+        INNER JOIN "roles_grupo"
+        ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+        WHERE "miembros_grupo"."id" = :miembro_grupo_id
+        AND "miembros_grupo"."disabled" = FALSE
+      """)
+
+      query_miembro_grupo = session.execute(sql_miembro_grupo, {"miembro_grupo_id": id})
+      miembro_grupo = query_miembro_grupo.fetchone()
+
+      if not miembro_grupo:
+        raise ValueError("No se encontró al miembro del grupo")
+
+      miembro_grupo = dict(zip(query_miembro_grupo.keys(), miembro_grupo))
+
+      sql = text("""
+        SELECT "roles_grupo"."clave"
+        FROM "grupos"
+        INNER JOIN "miembros_grupo"
+        ON "miembros_grupo"."grupo_id" = "grupos"."id"
+        INNER JOIN "roles_grupo"
+        ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+        WHERE "miembros_grupo"."usuario_id" = :usuario_id AND "grupos"."id" = :grupo_id
+      """)
+
+      query = session.execute(sql, {"usuario_id": usuario_id, "grupo_id": miembro_grupo.get("grupo_id")})
+      rol_grupo_clave = query.fetchone()
+
+      if not rol_grupo_clave:
+        raise ValueError("No se encontró el rol del grupo para el usuario")
+
+      rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))
+
+      roles_permitidos = ["propietario", "administrador"]
+
+      if rol_grupo_clave.get("clave") not in roles_permitidos:
+        raise ValueError("El usuario no tiene permisos para modificar el rol de los miembros en este grupo")
+
+      if miembro_grupo.get("rol_grupo_clave") == "propietario":
+        raise ValueError("No se puede modificar el rol del propietario")
+
+      if miembro_grupo.get("rol_grupo_clave") == "administrador" and rol_grupo_clave.get("clave") == "administrador":
+        raise ValueError("No se puede modificar el rol del administrador")
+
+      rol = session.query(RolGrupoModel).filter(RolGrupoModel.id == miembro_grupo_update.rol_grupo_id).one_or_none()
+      if not rol:
+        raise ValueError("No se encontró el rol del grupo")
+
+      roles_permitidos_modificar = []
+
+      if rol_grupo_clave.get("clave") == "administrador":
+        roles_permitidos_modificar = ["invitado", "editor"]
+      elif rol_grupo_clave.get("clave") == "propietario":
+        roles_permitidos_modificar = ["invitado", "editor", "administrador"]
+
+      if rol.clave not in roles_permitidos_modificar:
+        raise ValueError("No se puede modificar el rol del miembro")
+
+      # Actualizar los campos proporcionados en la solicitud
+      for key, value in miembro_grupo_update.dict(exclude_unset=True).items():
+        miembro_grupo[key] = value
+
+      # Ejecutar la consulta de actualización en la base de datos
+      sql_update = text("""
+        UPDATE "miembros_grupo"
+        SET
+          "rol_grupo_id" = :rol_grupo_id
+        WHERE "id" = :miembro_grupo_id
+      """)
+
+      session.execute(sql_update, {
+        "rol_grupo_id": miembro_grupo["rol_grupo_id"],
+        "miembro_grupo_id": id
+      })
+
       session.commit()
-      session.refresh(miembro_grupo)
+      return miembro_grupo
+
+  def delete_miembro_grupo(self, id: int, usuario_id: int):
+    with self.db as session:
+      sql_miembro_grupo = text("""
+        SELECT
+          "miembros_grupo"."id",
+          "miembros_grupo"."grupo_id",
+          "miembros_grupo"."usuario_id",
+          "miembros_grupo"."rol_grupo_id",
+          "roles_grupo"."clave" as "rol_grupo_clave"
+        FROM "miembros_grupo"
+        INNER JOIN "roles_grupo"
+        ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+        WHERE "miembros_grupo"."id" = :miembro_grupo_id
+        AND "miembros_grupo"."disabled" = FALSE
+      """)
+
+      query_miembro_grupo = session.execute(sql_miembro_grupo, {"miembro_grupo_id": id})
+      miembro_grupo = query_miembro_grupo.fetchone()
+
+      if not miembro_grupo:
+        raise ValueError("No se encontró al miembro del grupo")
+
+      miembro_grupo = dict(zip(query_miembro_grupo.keys(), miembro_grupo))
+
+      sql = text("""
+        SELECT "roles_grupo"."clave"
+        FROM "grupos"
+        INNER JOIN "miembros_grupo"
+        ON "miembros_grupo"."grupo_id" = "grupos"."id"
+        INNER JOIN "roles_grupo"
+        ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+        WHERE "miembros_grupo"."usuario_id" = :usuario_id AND "grupos"."id" = :grupo_id
+      """)
+
+      query = session.execute(sql, {"usuario_id": usuario_id, "grupo_id": miembro_grupo.get("grupo_id")})
+      rol_grupo_clave = query.fetchone()
+
+      if not rol_grupo_clave:
+        raise ValueError("No se encontró el rol del grupo para el usuario")
+
+      rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))
+
+      roles_permitidos = ["propietario", "administrador"]
+
+      if rol_grupo_clave.get("clave") not in roles_permitidos:
+        raise ValueError("El usuario no tiene permisos para eliminar miembros en este grupo")
+
+      if miembro_grupo.get("rol_grupo_clave") == "propietario":
+        raise ValueError("No se puede eliminar al propietario")
+
+      if miembro_grupo.get("rol_grupo_clave") == "administrador" and rol_grupo_clave.get("clave") == "administrador":
+        raise ValueError("No se puede eliminar a un administrador")
+
+      sql_delete = text("""
+        UPDATE "miembros_grupo"
+        SET
+          "disabled" = TRUE
+        WHERE "id" = :miembro_grupo_id
+      """)
+
+      session.execute(sql_delete, {
+        "miembro_grupo_id": id
+      })
+
+      session.commit()
       return miembro_grupo

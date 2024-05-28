@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_200_OK
 from starlette.requests import Request
 
 from config.database import Session, engine, Base
@@ -10,6 +10,7 @@ from routes.v1.miembro_grupo.schema import (
   MiembroGrupo as MiembroGrupoSchema,
   MiembroGrupoResponse as MiembroGrupoResponseSchema,
   MiembroGrupoCreate as MiembroGrupoCreateSchema,
+  MiembroGrupoUpdate as MiembroGrupoUpdateSchema,
   InvitationData as InvitationDataSchema,
   TokenAceptarInv as TokenAceptarInvSchema
 )
@@ -40,10 +41,10 @@ async def get_miembros_grupo(
   path='/{id}', 
   tags=['miembros_grupo'], 
   status_code=status.HTTP_200_OK,
-  response_model=MiembroGrupoSchema,
+  response_model=MiembroGrupoResponseSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def get_miembro_grupo(id: int) -> MiembroGrupoSchema:
+async def get_miembro_grupo(id: int) -> MiembroGrupoResponseSchema:
   db = Session()
   result = MiembroGrupoService(db).get_miembro_grupo(id)
   if not result:
@@ -83,16 +84,42 @@ async def aceptar_invitacion_miembro_grupo(token_data: TokenAceptarInvSchema) ->
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo aceptar la invitación al grupo'})
   return result
 
-@router.post(
-  path='', 
+@router.put(
+  path='/{id}', 
   tags=['miembros_grupo'], 
-  status_code=status.HTTP_201_CREATED,
+  status_code=status.HTTP_200_OK,
   response_model=MiembroGrupoSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def create_miembro_grupo(miembro_grupo: MiembroGrupoCreateSchema) -> MiembroGrupoSchema:
+async def update_miembro_grupo(
+  id: int,
+  miembro_grupo: MiembroGrupoUpdateSchema,
+  request: Request
+) -> MiembroGrupoSchema:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+
   db = Session()
-  result = MiembroGrupoService(db).create_miembro_grupo(miembro_grupo)
+  result = MiembroGrupoService(db).update_miembro_grupo(id, miembro_grupo, usuario_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo crear el miembro del grupo'})
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo actualizar el miembro del grupo'})
   return result
+
+@router.delete(
+  path='/{id}', 
+  tags=['miembros_grupo'], 
+  status_code=status.HTTP_200_OK,
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
+)
+async def delete_miembro_grupo(
+  id: int,
+  request: Request
+) -> JSONResponse:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+  
+  db = Session()
+  result = MiembroGrupoService(db).delete_miembro_grupo(id, usuario_id)
+  if not result:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo eliminar al miembro del grupo'})
+  return JSONResponse(status_code=HTTP_200_OK, content={'message': 'Miembro del grupo eliminado correctamente'})
