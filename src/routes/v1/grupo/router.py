@@ -20,11 +20,14 @@ Base.metadata.create_all(bind=engine)
   tags=['grupos'], 
   status_code=status.HTTP_200_OK,
   response_model=list[GrupoSchema],
-  dependencies=[Depends(CheckRoles("admin"))]
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def get_grupos() -> list[GrupoSchema]:
+async def get_grupos(request: Request) -> list[GrupoSchema]:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+
   db = Session()
-  result = GrupoService(db).get_grupos()
+  result = GrupoService(db).get_grupos(usuario_id)
   if not result:
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontraron grupos'})
   return result
@@ -34,11 +37,14 @@ async def get_grupos() -> list[GrupoSchema]:
   tags=['grupos'], 
   status_code=status.HTTP_200_OK,
   response_model=GrupoSchema,
-  dependencies=[Depends(CheckRoles("admin"))]
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def get_grupo(id: int) -> GrupoSchema:
+async def get_grupo(request: Request, id: int) -> GrupoSchema:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+
   db = Session()
-  result = GrupoService(db).get_grupo(id)
+  result = GrupoService(db).get_grupo(id, usuario_id)
   if not result:
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró el grupo'})
   return result

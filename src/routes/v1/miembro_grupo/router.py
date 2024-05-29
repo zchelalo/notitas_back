@@ -9,7 +9,6 @@ from middlewares.auth_handler import CheckRoles
 from routes.v1.miembro_grupo.schema import (
   MiembroGrupo as MiembroGrupoSchema,
   MiembroGrupoResponse as MiembroGrupoResponseSchema,
-  MiembroGrupoCreate as MiembroGrupoCreateSchema,
   MiembroGrupoUpdate as MiembroGrupoUpdateSchema,
   InvitationData as InvitationDataSchema,
   TokenAceptarInv as TokenAceptarInvSchema

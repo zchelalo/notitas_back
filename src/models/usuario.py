@@ -17,3 +17,4 @@ class Usuario(Base):
 
   tipo_usuario = relationship('TipoUsuario', back_populates='usuarios')
   miembros_grupo = relationship('MiembroGrupo', back_populates='usuario')
+  notitas_usuario = relationship('NotitaUsuario', back_populates='usuario')

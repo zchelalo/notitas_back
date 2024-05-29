@@ -12,25 +12,61 @@ class GrupoService():
   def __init__(self, db) -> None:
     self.db = db
 
-  def get_grupos(self):
+  def get_grupos(self, usuario_id: int):
     with self.db as session:
-      filtros = [
-        GrupoModel.disabled == False
-      ]
+      params = {}
 
-      result = session.query(GrupoModel).filter(*filtros).all()
-      return result
+      sql = """
+        SELECT
+          "grupos"."id",
+          "grupos"."nombre",
+          "grupos"."descripcion",
+          "grupos"."profile_pic",
+          "grupos"."banner",
+          "grupos"."color"
+        FROM "grupos"
+        INNER JOIN "miembros_grupo"
+        ON "miembros_grupo"."grupo_id" = "grupos"."id"
+        WHERE "grupos"."disabled" = FALSE
+        AND "miembros_grupo"."disabled" = FALSE
+        AND "miembros_grupo"."usuario_id" = :usuario_id
+      """
 
-  def get_grupo(self, id):
+      params["usuario_id"] = usuario_id
+
+      query = session.execute(text(sql), params)
+      grupos = query.fetchall()
+
+      return grupos
+
+  def get_grupo(self, id: int, usuario_id: int):
     with self.db as session:
-      filtros = [
-        GrupoModel.disabled == False
-      ]
+      params = {}
 
-      filtros.append(GrupoModel.id == id)
+      sql = """
+        SELECT
+          "grupos"."id",
+          "grupos"."nombre",
+          "grupos"."descripcion",
+          "grupos"."profile_pic",
+          "grupos"."banner",
+          "grupos"."color"
+        FROM "grupos"
+        INNER JOIN "miembros_grupo"
+        ON "miembros_grupo"."grupo_id" = "grupos"."id"
+        WHERE "grupos"."disabled" = FALSE
+        AND "miembros_grupo"."disabled" = FALSE
+        AND "miembros_grupo"."usuario_id" = :usuario_id
+        AND "grupos"."id" = :id
+      """
 
-      result = session.query(GrupoModel).filter(*filtros).one_or_none()
-      return result
+      params["usuario_id"] = usuario_id
+      params["id"] = id
+
+      query = session.execute(text(sql), params)
+      grupo = query.fetchone()
+
+      return grupo
 
   def create_grupo(self, usuario_id: int, grupo: GrupoSchema):
     with self.db as session:
@@ -124,4 +160,4 @@ class GrupoService():
         session.add(miembro_grupo)
 
       session.commit()
-      return
+      return True

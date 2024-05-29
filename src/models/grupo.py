@@ -16,3 +16,4 @@ class Grupo(Base):
   updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
   miembros_grupo = relationship('MiembroGrupo', cascade="all, delete", back_populates='grupo')
+  notitas_grupo = relationship('NotitaGrupo', back_populates='grupo')

@@ -66,9 +66,6 @@ class MiembroGrupoService():
 
       query = session.execute(text(sql), params)
       miembros_grupo = query.fetchall()
-
-      if not miembros_grupo:
-        raise ValueError("No se encontrarón miembros del grupo")
       
       # if rol_grupo_clave:
       #   rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))  # Convertir a un diccionario
@@ -403,4 +400,4 @@ class MiembroGrupoService():
       })
 
       session.commit()
-      return miembro_grupo
+      return True
