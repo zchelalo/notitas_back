@@ -12,6 +12,9 @@ class NotitaService():
   def __init__(self, db) -> None:
     self.db = db
 
+#######################################################################
+# NOTITAS USUARIO
+#######################################################################
   def get_notitas_usuario(self, usuario_id: int):
     with self.db as session:
       params = {}
@@ -116,7 +119,7 @@ class NotitaService():
       if not notita:
         raise ValueError("No se encontró la notita del usuario")
 
-      # notita = dict(zip(query.keys(), notita))
+      notita = dict(zip(query.keys(), notita))
 
       # # Actualizar los campos proporcionados en la solicitud
       # for key, value in notita_update.dict(exclude_unset=True).items():
@@ -184,6 +187,9 @@ class NotitaService():
 
       return True
 
+#######################################################################
+# NOTITAS GRUPO
+#######################################################################
   def get_notitas_grupo(self, usuario_id: int, grupo_id: int):
     with self.db as session:
       existe_usuario_en_grupo = session.query(MiembroGrupoModel).filter(MiembroGrupoModel.usuario_id == usuario_id, MiembroGrupoModel.grupo_id == grupo_id, MiembroGrupoModel.disabled == False).first()
