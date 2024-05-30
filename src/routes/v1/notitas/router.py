@@ -9,7 +9,7 @@ from middlewares.auth_handler import CheckRoles
 from routes.v1.notitas.schema import (
   Notita as NotitaSchema,
   NotitaCreate as NotitaCreateSchema,
-  NotitaUsuarioUpdate as NotitaUsuarioUpdateSchema
+  NotitaUpdate as NotitaUpdateSchema
 )
 from routes.v1.notitas.service import NotitaService
 
@@ -79,7 +79,7 @@ async def create_notita_usuario(
 async def update_notita_usuario(
   request: Request,
   notita_id: int,
-  notita_update: NotitaUsuarioUpdateSchema
+  notita_update: NotitaUpdateSchema
 ) -> NotitaSchema:
   data_usuario = request.state.data_usuario
   usuario_id = data_usuario.get("sub")
@@ -95,7 +95,7 @@ async def update_notita_usuario(
   response_model=NotitaSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def update_notita_usuario(
+async def delete_notita_usuario(
   request: Request,
   notita_id: int
 ) -> NotitaSchema:
@@ -135,7 +135,7 @@ async def get_notitas_grupo(
   response_model=NotitaSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def get_notitas_grupo(
+async def get_notita_grupo(
   request: Request,
   grupo_id: int,
   notita_id: int
@@ -156,7 +156,7 @@ async def get_notitas_grupo(
   response_model=NotitaSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def create_notita_usuario(
+async def create_notita_grupo(
   request: Request,
   grupo_id: int,
   notita: NotitaCreateSchema
@@ -167,3 +167,44 @@ async def create_notita_usuario(
   db = Session()
   new_notita = NotitaService(db).create_notita_grupo(usuario_id, grupo_id, notita)
   return new_notita
+
+@router.put(
+  path='/grupos/{grupo_id}/{notita_id}',
+  tags=['notitas'], 
+  status_code=status.HTTP_200_OK,
+  response_model=NotitaSchema,
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
+)
+async def update_notita_grupo(
+  request: Request,
+  grupo_id: int,
+  notita_id: int,
+  notita_update: NotitaUpdateSchema
+) -> NotitaSchema:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+
+  db = Session()
+  updated_notita = NotitaService(db).update_notita_grupo(usuario_id, grupo_id, notita_id, notita_update)
+  return updated_notita
+
+@router.delete(
+  path='/grupos/{grupo_id}/{notita_id}',
+  tags=['notitas'], 
+  status_code=status.HTTP_200_OK,
+  response_model=NotitaSchema,
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
+)
+async def delete_notita_grupo(
+  request: Request,
+  grupo_id: int,
+  notita_id: int
+) -> NotitaSchema:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+
+  db = Session()
+  result = NotitaService(db).delete_notita_grupo(usuario_id, grupo_id, notita_id)
+  if not result:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo eliminar la notita'})
+  return JSONResponse(status_code=HTTP_200_OK, content={'message': 'Notita eliminada correctamente'})

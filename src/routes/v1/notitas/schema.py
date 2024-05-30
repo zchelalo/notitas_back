@@ -36,7 +36,7 @@ class NotitaCreate(BaseModel):
       }
     }
 
-class NotitaUsuarioUpdate(BaseModel):
+class NotitaUpdate(BaseModel):
   titulo: Optional[constr(min_length=0, max_length=255)] = None
   nota: Optional[str] = None
   color: Optional[constr(min_length=0, max_length=50)] = None
