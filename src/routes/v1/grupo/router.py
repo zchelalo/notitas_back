@@ -1,5 +1,6 @@
 from fastapi import APIRouter, status, File, UploadFile, Depends, Form, HTTPException, Response
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
+from fastapi.responses import JSONResponse
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_200_OK
 from typing import Optional
 from starlette.requests import Request
 from pydantic import constr
@@ -148,6 +149,8 @@ async def delete_grupo(request: Request, id: int) -> GrupoSchema:
   if not grupo:
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró el grupo'})
   
-  GrupoService(db).delete_grupo(usuario_id, grupo)
+  result = GrupoService(db).delete_grupo(usuario_id, grupo)
+  if not result:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se pudo eliminar el grupo'})
 
-  return Response(status_code=HTTP_204_NO_CONTENT)
+  return JSONResponse(status_code=HTTP_200_OK, content={'message': 'Grupo eliminado correctamente'})
