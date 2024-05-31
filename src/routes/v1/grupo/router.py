@@ -40,7 +40,10 @@ async def get_grupos(request: Request) -> list[GrupoSchema]:
   response_model=GrupoSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def get_grupo(request: Request, id: int) -> GrupoSchema:
+async def get_grupo(
+  request: Request,
+  id: int
+) -> GrupoSchema:
   data_usuario = request.state.data_usuario
   usuario_id = data_usuario.get("sub")
 
@@ -102,17 +105,17 @@ async def update_grupo(
   profile_pic: Optional[UploadFile] = File(None),
   banner: Optional[UploadFile] = File(None),
 ) -> GrupoSchema:
+  data_usuario = request.state.data_usuario
+  usuario_id = data_usuario.get("sub")
+  
   db = Session()
-  grupo = GrupoService(db).get_grupo(id)
+  grupo = GrupoService(db).get_grupo(id, usuario_id)
   if not grupo:
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró el grupo'})
 
   grupo_schema = GrupoSchema.from_orm(grupo)
 
   profile_pic_path, banner_path = None, None
-
-  data_usuario = request.state.data_usuario
-  usuario_id = data_usuario.get("sub")
 
   if profile_pic:
     profile_pic_contents = await profile_pic.read()
