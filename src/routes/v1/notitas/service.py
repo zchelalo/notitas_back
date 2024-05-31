@@ -91,9 +91,7 @@ class NotitaService():
 
   def update_notita_usuario(self, usuario_id: int, notita_id: int, notita_update: NotitaSchema):
     with self.db as session:
-      params = {}
-
-      sql = """
+      sql = text("""
         SELECT
           "notitas"."id",
           "notitas"."titulo",
@@ -105,50 +103,27 @@ class NotitaService():
         INNER JOIN "notitas"
         ON "notitas"."id" = "notitas_usuario"."notita_id"
         WHERE "notitas_usuario"."disabled" = FALSE
-      """
+        AND "notitas_usuario"."usuario_id" = :usuario_id
+        AND "notitas_usuario"."id" = :notita_id
+      """)
 
-      sql += " AND \"notitas_usuario\".\"id\" = :notita_id"
-      sql += " AND \"notitas_usuario\".\"usuario_id\" = :usuario_id"
-
-      params["notita_id"] = notita_id
-      params["usuario_id"] = usuario_id
-
-      query = session.execute(text(sql), params)
+      query = session.execute(sql, {"usuario_id": usuario_id, "notita_id": notita_id})
       notita = query.fetchone()
 
       if not notita:
-        raise ValueError("No se encontró la notita del usuario")
+        return None
 
       notita = dict(zip(query.keys(), notita))
-
-      # # Actualizar los campos proporcionados en la solicitud
-      # for key, value in notita_update.dict(exclude_unset=True).items():
-      #   notita[key] = value
-
-      # print(notita)
-
-      # # Ejecutar la consulta de actualización en la base de datos
-      # sql_update = text("""
-      #   UPDATE "notitas"
-      #   SET
-      #     "titulo" = :titulo,
-      #     "nota" = :nota,
-      #     "color" = :color,
-      #     "privada" = :privada
-      #   WHERE "id" = :id
-      # """)
-
-      # session.execute(sql_update, notita)
-      # session.commit()
-      # return notita
-
       notita_update = notita_update.dict(exclude_unset=True)
+
       update_stmt = update(NotitaModel).filter(NotitaModel.id == notita.get("id")).values(**notita_update)
       session.execute(update_stmt)
       session.commit()
 
-      notita = session.query(NotitaModel).filter(NotitaModel.id == notita.get("id")).first()
-      notita.id = notita_id
+      # notita = session.query(NotitaModel).filter(NotitaModel.id == notita.get("id")).first()
+      for key, value in notita_update.items():
+        notita[key] = value
+      notita["id"] = notita_id
       return notita
 
   def delete_notita_usuario(self, usuario_id: int, notita_id: int):
@@ -179,7 +154,7 @@ class NotitaService():
       notita = query.fetchone()
 
       if not notita:
-        raise ValueError("No se encontró la notita del usuario")
+        return None
 
       update_stmt = update(NotitaUsuarioModel).filter(NotitaUsuarioModel.id == notita_id).values(disabled=True)
       session.execute(update_stmt)
@@ -335,7 +310,7 @@ class NotitaService():
       notita = query.fetchone()
 
       if not notita:
-        raise ValueError("No se encontró la notita")
+        return None
 
       notita = dict(zip(query.keys(), notita))
 
@@ -344,8 +319,11 @@ class NotitaService():
       session.execute(update_stmt)
       session.commit()
 
-      notita = session.query(NotitaModel).filter(NotitaModel.id == notita.get("id")).first()
-      notita.id = notita_id
+      # notita = session.query(NotitaModel).filter(NotitaModel.id == notita.get("id")).first()
+      # notita.id = notita_id
+      for key, value in notita_update.items():
+        notita[key] = value
+      notita["id"] = notita_id
       return notita
 
   def delete_notita_grupo(self, usuario_id: int, grupo_id: int, notita_id: int):
@@ -392,7 +370,7 @@ class NotitaService():
       notita = query.fetchone()
 
       if not notita:
-        raise ValueError("No se encontró la notita del usuario")
+        return None
 
       update_stmt = update(NotitaGrupoModel).filter(NotitaGrupoModel.id == notita_id).values(disabled=True)
       session.execute(update_stmt)

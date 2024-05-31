@@ -86,6 +86,8 @@ async def update_notita_usuario(
 
   db = Session()
   updated_notita = NotitaService(db).update_notita_usuario(usuario_id, notita_id, notita_update)
+  if not updated_notita:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró la notita'})
   return updated_notita
 
 @router.delete(
@@ -186,6 +188,8 @@ async def update_notita_grupo(
 
   db = Session()
   updated_notita = NotitaService(db).update_notita_grupo(usuario_id, grupo_id, notita_id, notita_update)
+  if not updated_notita:
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró la notita'})
   return updated_notita
 
 @router.delete(

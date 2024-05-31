@@ -1,4 +1,4 @@
-from sqlalchemy import text
+from sqlalchemy import text, update
 import jwt
 import time
 import os
@@ -388,16 +388,7 @@ class MiembroGrupoService():
       if miembro_grupo.get("rol_grupo_clave") == "administrador" and rol_grupo_clave.get("clave") == "administrador":
         raise ValueError("No se puede eliminar a un administrador")
 
-      sql_delete = text("""
-        UPDATE "miembros_grupo"
-        SET
-          "disabled" = TRUE
-        WHERE "id" = :miembro_grupo_id
-      """)
-
-      session.execute(sql_delete, {
-        "miembro_grupo_id": id
-      })
-
+      update_stmt = update(MiembroGrupoModel).filter(MiembroGrupoModel.id == id).values(disabled=True)
+      session.execute(update_stmt)
       session.commit()
       return True
