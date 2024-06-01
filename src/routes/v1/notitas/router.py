@@ -31,7 +31,7 @@ async def get_notitas_usuario(request: Request) -> list[NotitaSchema]:
   db = Session()
   result = NotitaService(db).get_notitas_usuario(usuario_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'error': 'No se encontraron notitas'})
+    return []
   return result
 
 @router.get(
@@ -48,7 +48,7 @@ async def get_notitas_usuario(request: Request, notita_id: int) -> NotitaSchema:
   db = Session()
   result = NotitaService(db).get_notita_usuario(usuario_id, notita_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'error': 'No se encontró la notita'})
+    return []
   return result
 
 @router.post(
@@ -127,7 +127,7 @@ async def get_notitas_grupo(
   db = Session()
   result = NotitaService(db).get_notitas_grupo(usuario_id, grupo_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'error': 'No se encontraron notitas'})
+    return []
   return result
 
 @router.get(
@@ -148,7 +148,7 @@ async def get_notita_grupo(
   db = Session()
   result = NotitaService(db).get_notita_grupo(usuario_id, grupo_id, notita_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'error': 'No se encontró la notita'})
+    return []
   return result
 
 @router.post(

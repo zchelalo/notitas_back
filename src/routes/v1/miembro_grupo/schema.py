@@ -53,6 +53,7 @@ class MiembroGrupoResponse(BaseModel):
   usuario_profile_pic: Optional[str] = None
   grupo_id: int
   grupo_nombre: str
+  grupo_descripcion: Optional[str] = None
   grupo_profile_pic: Optional[str] = None
 
   class Config:

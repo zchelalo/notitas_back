@@ -17,9 +17,7 @@ class NotitaService():
 #######################################################################
   def get_notitas_usuario(self, usuario_id: int):
     with self.db as session:
-      params = {}
-
-      sql = """
+      sql = text("""
         SELECT
           "notitas_usuario"."id",
           "notitas"."titulo",
@@ -31,12 +29,11 @@ class NotitaService():
         INNER JOIN "notitas"
         ON "notitas"."id" = "notitas_usuario"."notita_id"
         WHERE "notitas_usuario"."disabled" = FALSE
-      """
+        AND "notitas_usuario"."usuario_id" = :usuario_id
+        ORDER BY "notitas"."id" DESC
+      """)
 
-      sql += " AND \"notitas_usuario\".\"usuario_id\" = :usuario_id"
-      params["usuario_id"] = usuario_id
-
-      query = session.execute(text(sql), params)
+      query = session.execute(sql, {"usuario_id": usuario_id})
       notitas = query.fetchall()
 
       return notitas

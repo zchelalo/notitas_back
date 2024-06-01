@@ -32,9 +32,46 @@ class MiembroGrupoService():
 
       # result = session.query(MiembroGrupoModel).filter(*filtros).all()
 
-      params = {}
+      if (grupo_id):
+        es_miembro_del_grupo = session.query(MiembroGrupoModel).filter(
+          MiembroGrupoModel.grupo_id == grupo_id,
+          MiembroGrupoModel.usuario_id == usuario_id,
+          MiembroGrupoModel.disabled == False).one_or_none()
 
-      sql = """
+        if not es_miembro_del_grupo:
+          raise ValueError("No eres miembro de este grupo")
+          # return None
+
+        sql = text("""
+          SELECT
+            "miembros_grupo"."id",
+            "miembros_grupo"."usuario_id",
+            "miembros_grupo"."grupo_id",
+            "miembros_grupo"."rol_grupo_id",
+            "roles_grupo"."clave" AS "rol_grupo_clave",
+            "roles_grupo"."descripcion" AS "rol_grupo_descripcion",
+            "usuarios"."nombre" AS "usuario_nombre",
+            "usuarios"."profile_pic" AS "usuario_profile_pic",
+            "grupos"."nombre" AS "grupo_nombre",
+            "grupos"."profile_pic" AS "grupo_profile_pic",
+            "grupos"."descripcion" AS "grupo_descripcion"
+          FROM "miembros_grupo"
+          INNER JOIN "roles_grupo"
+          ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+          INNER JOIN "grupos"
+          ON "miembros_grupo"."grupo_id" = "grupos"."id"
+          INNER JOIN "usuarios"
+          ON "miembros_grupo"."usuario_id" = "usuarios"."id"
+          WHERE "miembros_grupo"."disabled" = FALSE
+          AND "miembros_grupo"."grupo_id" = :grupo_id
+        """)
+
+        query = session.execute(sql, {"grupo_id": grupo_id})
+        miembros_grupo = query.fetchall()
+        
+        return miembros_grupo
+      
+      sql = text("""
         SELECT
           "miembros_grupo"."id",
           "miembros_grupo"."usuario_id",
@@ -45,7 +82,8 @@ class MiembroGrupoService():
           "usuarios"."nombre" AS "usuario_nombre",
           "usuarios"."profile_pic" AS "usuario_profile_pic",
           "grupos"."nombre" AS "grupo_nombre",
-          "grupos"."profile_pic" AS "grupo_profile_pic"
+          "grupos"."profile_pic" AS "grupo_profile_pic",
+          "grupos"."descripcion" AS "grupo_descripcion"
         FROM "miembros_grupo"
         INNER JOIN "roles_grupo"
         ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
@@ -54,32 +92,16 @@ class MiembroGrupoService():
         INNER JOIN "usuarios"
         ON "miembros_grupo"."usuario_id" = "usuarios"."id"
         WHERE "miembros_grupo"."disabled" = FALSE
-      """
+        AND "miembros_grupo"."usuario_id" = :usuario_id
+      """)
 
-      if grupo_id:
-        sql += " AND \"miembros_grupo\".\"grupo_id\" = :grupo_id"
-        params["grupo_id"] = grupo_id
-
-      if usuario_id:
-        sql += " AND \"miembros_grupo\".\"usuario_id\" = :usuario_id"
-        params["usuario_id"] = usuario_id
-
-      query = session.execute(text(sql), params)
+      query = session.execute(sql, {"usuario_id": usuario_id})
       miembros_grupo = query.fetchall()
       
-      # if rol_grupo_clave:
-      #   rol_grupo_clave = dict(zip(query.keys(), rol_grupo_clave))  # Convertir a un diccionario
       return miembros_grupo
 
-  def get_miembro_grupo(self, id: int):
+  def get_miembro_grupo(self, id: int, usuario_id: int):
     with self.db as session:
-      # filtros = [
-      #   MiembroGrupoModel.disabled == False
-      # ]
-
-      # filtros.append(MiembroGrupoModel.id == id)
-
-      # result = session.query(MiembroGrupoModel).filter(*filtros).one_or_none()
 
       sql = text("""
         SELECT
@@ -92,7 +114,8 @@ class MiembroGrupoService():
           "usuarios"."nombre" AS "usuario_nombre",
           "usuarios"."profile_pic" AS "usuario_profile_pic",
           "grupos"."nombre" AS "grupo_nombre",
-          "grupos"."profile_pic" AS "grupo_profile_pic"
+          "grupos"."profile_pic" AS "grupo_profile_pic",
+          "grupos"."descripcion" AS "grupo_descripcion"
         FROM "miembros_grupo"
         INNER JOIN "roles_grupo"
         ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
@@ -110,6 +133,14 @@ class MiembroGrupoService():
         raise ValueError("No se encontró el miembro del grupo")
 
       miembro_grupo = dict(zip(query.keys(), miembro_grupo))
+
+      pertenecen_al_mismo_grupo = session.query(MiembroGrupoModel).filter(
+        MiembroGrupoModel.grupo_id == miembro_grupo.get("grupo_id"),
+        MiembroGrupoModel.usuario_id == usuario_id,
+        MiembroGrupoModel.disabled == False).one_or_none()
+
+      if not pertenecen_al_mismo_grupo:
+        raise ValueError("No puedes ver la información de este miembro")
 
       return miembro_grupo
 
@@ -203,7 +234,7 @@ class MiembroGrupoService():
 
       return response.json()
 
-  def aceptar_invitacion_miembro_grupo(self, token_data: TokenAceptarInvSchema):
+  def aceptar_invitacion_miembro_grupo(self, token_data: TokenAceptarInvSchema, usuario_id: int):
     with self.db as session:
       # Leer la clave pública PEM
       ruta_certs = os.path.join(os.getcwd(), 'certs')
@@ -217,6 +248,9 @@ class MiembroGrupoService():
       )
 
       payload = jwt.decode(token_data.token, public_key, algorithms=["RS256"])
+
+      if payload['sub'] != usuario_id:
+        raise ValueError("El token no pertenece al usuario")
 
       usuario = session.query(UsuarioModel).filter(UsuarioModel.id == payload['sub'], UsuarioModel.disabled == False).one_or_none()
       if not usuario:
