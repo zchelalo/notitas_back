@@ -14,9 +14,7 @@ class GrupoService():
 
   def get_grupos(self, usuario_id: int):
     with self.db as session:
-      params = {}
-
-      sql = """
+      sql = text("""
         SELECT
           "grupos"."id",
           "grupos"."nombre",
@@ -30,20 +28,16 @@ class GrupoService():
         WHERE "grupos"."disabled" = FALSE
         AND "miembros_grupo"."disabled" = FALSE
         AND "miembros_grupo"."usuario_id" = :usuario_id
-      """
+      """)
 
-      params["usuario_id"] = usuario_id
-
-      query = session.execute(text(sql), params)
+      query = session.execute(sql, {"usuario_id": usuario_id})
       grupos = query.fetchall()
 
       return grupos
 
   def get_grupo(self, id: int, usuario_id: int):
     with self.db as session:
-      params = {}
-
-      sql = """
+      sql = text("""
         SELECT
           "grupos"."id",
           "grupos"."nombre",
@@ -58,12 +52,9 @@ class GrupoService():
         AND "miembros_grupo"."disabled" = FALSE
         AND "miembros_grupo"."usuario_id" = :usuario_id
         AND "grupos"."id" = :id
-      """
+      """)
 
-      params["usuario_id"] = usuario_id
-      params["id"] = id
-
-      query = session.execute(text(sql), params)
+      query = session.execute(sql, {"usuario_id": usuario_id, "id": id})
       grupo = query.fetchone()
 
       return grupo

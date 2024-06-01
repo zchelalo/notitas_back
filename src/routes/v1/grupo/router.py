@@ -30,7 +30,7 @@ async def get_grupos(request: Request) -> list[GrupoSchema]:
   db = Session()
   result = GrupoService(db).get_grupos(usuario_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontraron grupos'})
+    return []
   return result
 
 @router.get(
@@ -50,7 +50,7 @@ async def get_grupo(
   db = Session()
   result = GrupoService(db).get_grupo(id, usuario_id)
   if not result:
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró el grupo'})
+    return []
   return result
 
 @router.post(
