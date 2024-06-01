@@ -41,14 +41,14 @@ async def get_notitas_usuario(request: Request) -> list[NotitaSchema]:
   response_model=NotitaSchema,
   dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
-async def get_notitas_usuario(request: Request, notita_id: int) -> NotitaSchema:
+async def get_notita_usuario(request: Request, notita_id: int) -> NotitaSchema:
   data_usuario = request.state.data_usuario
   usuario_id = data_usuario.get("sub")
   
   db = Session()
   result = NotitaService(db).get_notita_usuario(usuario_id, notita_id)
   if not result:
-    return []
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró la notita'})
   return result
 
 @router.post(
@@ -148,7 +148,7 @@ async def get_notita_grupo(
   db = Session()
   result = NotitaService(db).get_notita_grupo(usuario_id, grupo_id, notita_id)
   if not result:
-    return []
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró la notita'})
   return result
 
 @router.post(

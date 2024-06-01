@@ -50,7 +50,7 @@ async def get_grupo(
   db = Session()
   result = GrupoService(db).get_grupo(id, usuario_id)
   if not result:
-    return []
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail={'message': 'No se encontró el grupo'})
   return result
 
 @router.post(

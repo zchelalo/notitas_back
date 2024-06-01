@@ -56,7 +56,7 @@ class GrupoService():
 
       query = session.execute(sql, {"usuario_id": usuario_id, "id": id})
       grupo = query.fetchone()
-
+      
       return grupo
 
   def create_grupo(self, usuario_id: int, grupo: GrupoSchema):
