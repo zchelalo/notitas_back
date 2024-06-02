@@ -28,6 +28,7 @@ class GrupoService():
         WHERE "grupos"."disabled" = FALSE
         AND "miembros_grupo"."disabled" = FALSE
         AND "miembros_grupo"."usuario_id" = :usuario_id
+        ORDER BY "grupos"."id" DESC
       """)
 
       query = session.execute(sql, {"usuario_id": usuario_id})

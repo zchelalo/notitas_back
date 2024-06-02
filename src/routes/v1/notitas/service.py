@@ -182,6 +182,7 @@ class NotitaService():
         ON "notitas"."id" = "notitas_grupo"."notita_id"
         WHERE "notitas_grupo"."disabled" = FALSE
         AND "notitas_grupo"."grupo_id" = :grupo_id
+        ORDER BY "notitas"."id" DESC
       """)
 
       query = session.execute(sql, {"grupo_id": grupo_id})

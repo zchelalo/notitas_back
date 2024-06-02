@@ -64,6 +64,7 @@ class MiembroGrupoService():
           ON "miembros_grupo"."usuario_id" = "usuarios"."id"
           WHERE "miembros_grupo"."disabled" = FALSE
           AND "miembros_grupo"."grupo_id" = :grupo_id
+          ORDER BY "miembros_grupo"."id" ASC
         """)
 
         query = session.execute(sql, {"grupo_id": grupo_id})
@@ -93,6 +94,7 @@ class MiembroGrupoService():
         ON "miembros_grupo"."usuario_id" = "usuarios"."id"
         WHERE "miembros_grupo"."disabled" = FALSE
         AND "miembros_grupo"."usuario_id" = :usuario_id
+        ORDER BY "miembros_grupo"."id" ASC
       """)
 
       query = session.execute(sql, {"usuario_id": usuario_id})
