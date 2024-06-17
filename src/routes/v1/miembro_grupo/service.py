@@ -18,21 +18,9 @@ class MiembroGrupoService():
   def __init__(self, db) -> None:
     self.db = db
 
-  def get_miembros_grupo(self, grupo_id: int, usuario_id: int):
+  def get_miembros_grupo(self, grupo_id: int, usuario_id: int, solo_usuario: bool):
     with self.db as session:
-      # filtros = [
-      #   MiembroGrupoModel.disabled == False
-      # ]
-
-      # if grupo_id:
-      #   filtros.append(MiembroGrupoModel.grupo_id == grupo_id)
-
-      # if usuario_id:
-      #   filtros.append(MiembroGrupoModel.usuario_id == usuario_id)
-
-      # result = session.query(MiembroGrupoModel).filter(*filtros).all()
-
-      if (grupo_id):
+      if grupo_id:
         es_miembro_del_grupo = session.query(MiembroGrupoModel).filter(
           MiembroGrupoModel.grupo_id == grupo_id,
           MiembroGrupoModel.usuario_id == usuario_id,
@@ -41,6 +29,38 @@ class MiembroGrupoService():
         if not es_miembro_del_grupo:
           raise ValueError("No eres miembro de este grupo")
           # return None
+
+        if solo_usuario:
+          sql = text("""
+            SELECT
+              "miembros_grupo"."id",
+              "miembros_grupo"."usuario_id",
+              "miembros_grupo"."grupo_id",
+              "miembros_grupo"."rol_grupo_id",
+              "roles_grupo"."clave" AS "rol_grupo_clave",
+              "roles_grupo"."descripcion" AS "rol_grupo_descripcion",
+              "usuarios"."nombre" AS "usuario_nombre",
+              "usuarios"."profile_pic" AS "usuario_profile_pic",
+              "grupos"."nombre" AS "grupo_nombre",
+              "grupos"."profile_pic" AS "grupo_profile_pic",
+              "grupos"."descripcion" AS "grupo_descripcion"
+            FROM "miembros_grupo"
+            INNER JOIN "roles_grupo"
+            ON "miembros_grupo"."rol_grupo_id" = "roles_grupo"."id"
+            INNER JOIN "grupos"
+            ON "miembros_grupo"."grupo_id" = "grupos"."id"
+            INNER JOIN "usuarios"
+            ON "miembros_grupo"."usuario_id" = "usuarios"."id"
+            WHERE "miembros_grupo"."disabled" = FALSE
+            AND "miembros_grupo"."grupo_id" = :grupo_id
+            AND "usuarios"."id" = :usuario_id
+            ORDER BY "miembros_grupo"."id" ASC
+          """)
+
+          query = session.execute(sql, {"grupo_id": grupo_id, "usuario_id": usuario_id})
+          miembros_grupo = query.fetchall()
+          
+          return miembros_grupo
 
         sql = text("""
           SELECT

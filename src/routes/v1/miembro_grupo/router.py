@@ -28,13 +28,14 @@ Base.metadata.create_all(bind=engine)
 )
 async def get_miembros_grupo(
   request: Request,
-  grupo_id: int = None
+  grupo_id: int = None,
+  solo_usuario: bool = False
 ) -> list[MiembroGrupoResponseSchema]:
   data_usuario = request.state.data_usuario
   usuario_id = data_usuario.get("sub")
 
   db = Session()
-  result = MiembroGrupoService(db).get_miembros_grupo(grupo_id, usuario_id)
+  result = MiembroGrupoService(db).get_miembros_grupo(grupo_id, usuario_id, solo_usuario)
   if not result:
     return []
   return result
