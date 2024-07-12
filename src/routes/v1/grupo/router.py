@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, File, UploadFile, Depends, Form, HTTPException, Response
+from fastapi import APIRouter, status, File, UploadFile, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_200_OK
 from typing import Optional

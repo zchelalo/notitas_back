@@ -238,7 +238,7 @@ class MiembroGrupoService():
       # Crear el JWT firmado
       jwt_token = jwt.encode(jwt_payload, private_key, algorithm='RS256')
 
-      link = f'http://localhost:5173/invitacion?token={jwt_token}'
+      link = f'http://localhost:5173/invitacion/{jwt_token}'
 
       info = {
         'from': 'Notitas',
