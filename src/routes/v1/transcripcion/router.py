@@ -1,12 +1,14 @@
 from fastapi import APIRouter, status, File, UploadFile, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.status import HTTP_200_OK
 from middlewares.auth_handler import CheckRoles
+from routes.v1.transcripcion.schema import Text as TextSchema
 
 import tempfile
 import speech_recognition as sr
 import subprocess
 import os
+from gtts import gTTS
 
 router = APIRouter()
 
@@ -14,10 +16,10 @@ router = APIRouter()
 # TEST
 ############################################################################
 @router.post(
-  path='/transcribir_audio', 
-  tags=['test'], 
+  path='/audio_trascription', 
+  tags=['transcripcion'], 
   status_code=status.HTTP_200_OK,
-  dependencies=[Depends(CheckRoles("admin"))]
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
 )
 async def transcribir_audio(file: UploadFile = File(...)) -> JSONResponse:
   # Crear un archivo temporal para almacenar el audio en formato WebM
@@ -53,3 +55,31 @@ async def transcribir_audio(file: UploadFile = File(...)) -> JSONResponse:
     return {"error": f"Error al solicitar el reconocimiento de voz; {e}"}
   except Exception as e:
     return {"error": f"Error al procesar el archivo de audio; {e}"}
+
+@router.post(
+  path='/text_to_speech', 
+  tags=['transcripcion'], 
+  status_code=status.HTTP_200_OK,
+  dependencies=[Depends(CheckRoles("admin", "cliente"))]
+)
+async def transcribir_audio(
+  text: TextSchema
+) -> JSONResponse:
+  temp_audio_path = None
+  try:
+    # Crear un archivo temporal para almacenar el audio generado
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
+      tts = gTTS(text=text.texto, lang='es')
+      tts.save(temp_audio.name)
+      temp_audio_path = temp_audio.name
+
+    # Retornar el archivo de audio como una respuesta de streaming
+    return StreamingResponse(open(temp_audio_path, "rb"), media_type="audio/mpeg", headers={"Content-Disposition": "attachment; filename=audio.mp3"})
+  
+  except Exception as e:
+    return {"error": f"Error al procesar el texto; {e}"}
+  
+  finally:
+    # Eliminar el archivo temporal si se ha creado
+    if temp_audio_path and os.path.exists(temp_audio_path):
+      os.remove(temp_audio_path)
